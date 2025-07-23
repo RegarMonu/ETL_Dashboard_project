@@ -1,0 +1,6 @@
+.env
+virtualEnv
+config
+output.csv
+work_completed.csv
+work_in_progress.csv

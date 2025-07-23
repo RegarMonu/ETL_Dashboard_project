@@ -1,0 +1,11 @@
+pandas 
+psycopg2-binary
+dotenv
+openpyxl
+oauth2client
+gspread
+google-api-python-client
+google-auth 
+google-auth-oauthlib 
+google-auth-httplib2
+google-cloud-storage

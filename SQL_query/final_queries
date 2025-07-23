@@ -1,0 +1,314 @@
+CREATE TABLE IF NOT EXISTS file_tracker
+(
+	file_id TEXT PRIMARY KEY,
+    filename TEXT,
+    qc_done_by TEXT,
+    uploaded_by TEXT,
+    create_date DATE,
+    modified_date DATE,
+    status TEXT,
+	insert_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS work_completed
+(
+    lead_generation_dt DATE NULL,
+    source TEXT,
+    client TEXT,
+    vendor_type TEXT,
+    ticket_id TEXT PRIMARY KEY,
+    vendor_name TEXT,
+    category TEXT,
+    nature_of_business TEXT,
+    address_details TEXT,
+    city TEXT,
+    region TEXT,
+    zip_code TEXT,
+    name_of_poc TEXT,
+    website TEXT,
+    e_mail_address TEXT,
+    contact_number TEXT,
+    gst_details TEXT,
+    documents TEXT,
+    status_bd TEXT,
+    status_crm TEXT,
+    comments_bd TEXT,
+    remarks_bd TEXT,
+    raw_qc_status TEXT,
+    raw_qc_remarks TEXT,
+    ticket_status TEXT,
+    ticket_comments TEXT,
+    ticket_assigned_dt DATE,
+    catalogue_associate TEXT,
+    prod_type_s TEXT,
+    status_s TEXT,
+    assignee_s TEXT,
+    assigned_dt_s DATE NULL,
+    start_dt_s DATE NULL,
+    closed_dt_s DATE NULL,
+    no_of_products_s INTEGER,
+    no_of_categories_s INTEGER,
+    remarks_s TEXT,
+    prod_type_c TEXT,
+    status_c TEXT,
+    assignee_c TEXT,
+    assigned_dt_c DATE NULL,
+    start_dt_c DATE NULL,
+    closed_dt_c DATE NULL,
+    no_of_products_c INTEGER,
+    no_of_categories_c INTEGER,
+    remarks_c TEXT,
+    prod_type_qc TEXT,
+    status_qc TEXT,
+    assignee_qc TEXT,
+    assigned_dt_qc DATE NULL,
+    start_dt_qc DATE NULL,
+    closed_date_qc DATE NULL,
+    prod_type_u TEXT,
+    status_u TEXT,
+    assignee_u TEXT,
+    assigned_dt_u DATE NULL,
+    start_dt_u DATE NULL,
+    uploaded_date_u DATE NULL,
+    no_of_products_u INTEGER,
+    no_of_categories_u INTEGER,
+    reupload_master_products_count TEXT,
+    reupload_mapping_count TEXT,
+    remarks_qc_u TEXT,
+    insert_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS work_in_progress
+(
+    lead_generation_dt DATE NULL,
+    source TEXT,
+    client TEXT,
+    vendor_type TEXT,
+    ticket_id TEXT PRIMARY KEY,
+    vendor_name TEXT,
+    category TEXT,
+    nature_of_business TEXT,
+    address_details TEXT,
+    city TEXT,
+    region TEXT,
+    zip_code TEXT,
+    name_of_poc TEXT,
+    website TEXT,
+    e_mail_address TEXT,
+    contact_number TEXT,
+    gst_details TEXT,
+    documents TEXT,
+    status_bd TEXT,
+    status_crm TEXT,
+    comments_bd TEXT,
+    remarks_bd TEXT,
+    raw_qc_status TEXT,
+    raw_qc_remarks TEXT,
+    ticket_status TEXT,
+    ticket_comments TEXT,
+    ticket_assigned_dt DATE,
+    catalogue_associate TEXT,
+    prod_type_s TEXT,
+    status_s TEXT,
+    assignee_s TEXT,
+    assigned_dt_s DATE NULL,
+    start_dt_s DATE NULL,
+    closed_dt_s DATE NULL,
+    no_of_products_s INTEGER,
+    no_of_categories_s INTEGER,
+    remarks_s TEXT,
+    prod_type_c TEXT,
+    status_c TEXT,
+    assignee_c TEXT,
+    assigned_dt_c DATE NULL,
+    start_dt_c DATE NULL,
+    closed_dt_c DATE NULL,
+    no_of_products_c INTEGER,
+    no_of_categories_c INTEGER,
+    remarks_c TEXT,
+    prod_type_qc TEXT,
+    status_qc TEXT,
+    assignee_qc TEXT,
+    assigned_dt_qc DATE NULL,
+    start_dt_qc DATE NULL,
+    closed_date_qc DATE NULL,
+    prod_type_u TEXT,
+    status_u TEXT,
+    assignee_u TEXT,
+    assigned_dt_u DATE NULL,
+    start_dt_u DATE NULL,
+    uploaded_date_u DATE NULL,
+    no_of_products_u INTEGER,
+    no_of_categories_u INTEGER,
+    reupload_master_products_count TEXT,
+    reupload_mapping_count TEXT,
+    remarks_qc_u TEXT,
+    insert_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+
+CREATE TABLE IF NOT EXISTS dim_catalog_associates (
+    associate_id SERIAL PRIMARY KEY,
+    associate_name TEXT UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS dim_teams (
+    team_id SERIAL PRIMARY KEY,
+    team_name TEXT UNIQUE,
+    team_lead TEXT
+);
+
+CREATE TABLE IF NOT EXISTS dim_clients (
+    client_id SERIAL PRIMARY KEY,
+    client_name TEXT UNIQUE
+);
+
+
+CREATE TABLE IF NOT EXISTS dim_stages (
+    stage TEXT PRIMARY KEY,       -- e.g. 'S', 'C', 'QC', 'U'
+    stage_order INT UNIQUE,
+    stage_color TEXT
+);
+
+
+CREATE TABLE IF NOT EXISTS dim_dates (
+    date_id DATE PRIMARY KEY,
+    day INT,
+    month INT,
+    year INT,
+    month_year TEXT,      -- NEW: '2023-07'
+    quarter TEXT,
+    week INT,
+    day_of_week TEXT
+);
+
+CREATE TABLE IF NOT EXISTS dim_ticket_status(
+	ticket_status_id SERIAL PRIMARY KEY,
+	ticket_status TEXT UNIQUE,
+	is_final BOOLEAN
+);
+
+CREATE TABLE IF NOT EXISTS associate_team_map (
+    associate_name TEXT,
+    team_name TEXT,
+    CONSTRAINT fk_associate_name FOREIGN KEY (associate_name) REFERENCES dim_catalog_associates(associate_name),
+    CONSTRAINT fk_team_name FOREIGN KEY (team_name) REFERENCES dim_teams(team_name),
+    CONSTRAINT pk_associate_team PRIMARY KEY (associate_name)  -- Only one team per associate
+);
+
+
+CREATE TABLE IF NOT EXISTS etl_metadata (
+    table_name TEXT PRIMARY KEY,
+    last_loaded_at TIMESTAMP NOT NULL
+);
+
+-- fact_catalog_activity
+CREATE TABLE IF NOT EXISTS fact_catalog_activity (
+    fact_id SERIAL PRIMARY KEY,
+    ticket_id TEXT NOT NULL,
+    client_id INT,
+    associate_id INT,
+    stage_order INT,
+    stage_status TEXT,
+    ticstatus_id INT,
+    start_date DATE,
+    closed_date DATE,
+    no_of_products INT,
+    no_of_categories INT,
+    duration_hrs NUMERIC(8,2),
+    last_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (ticket_id, stage_order),
+
+    -- Foreign keys
+    FOREIGN KEY (client_id) REFERENCES dim_clients(client_id),
+    FOREIGN KEY (associate_id) REFERENCES dim_catalog_associates(associate_id),
+    FOREIGN KEY (stage_order) REFERENCES dim_stages(stage_order),
+    FOREIGN KEY (closed_date) REFERENCES dim_dates(date_id),
+	FOREIGN KEY (ticstatus_id) REFERENCES dim_ticket_status(ticket_status_id)
+);
+
+
+--------------------------Filling All Tables---------------------------------
+
+INSERT INTO dim_stages (stage, stage_order, stage_color)
+VALUES 
+    ('S', 1, 'green'),
+    ('C', 2, 'black'),
+    ('QC', 3, 'blue'),
+    ('U', 4, 'purple')
+ON CONFLICT (stage_order) DO NOTHING;
+
+
+INSERT INTO dim_dates (date_id, day, month, year, month_year, quarter, week, day_of_week)
+SELECT 
+    d::DATE AS date_id,
+    EXTRACT(DAY FROM d),
+    EXTRACT(MONTH FROM d),
+    EXTRACT(YEAR FROM d),
+    TO_CHAR(d, 'YYYY-MM') AS month_year,       
+    'Q' || EXTRACT(QUARTER FROM d),
+    EXTRACT(WEEK FROM d),
+    TRIM(TO_CHAR(d, 'Day'))                     
+FROM generate_series('2022-05-01'::date, '2030-12-31'::date, interval '1 day') AS d
+ON CONFLICT (date_id) DO NOTHING;
+
+
+INSERT INTO dim_ticket_status (ticket_status, is_final)
+VALUES 
+    ('In-progress', false),
+    ('On Hold', false),
+    ('Rejected', true),
+    ('Repeated', true),
+    ('Completed', true), 	
+    ('To Do', false),
+    ('Website Not Found', true),
+    ('To Do (Services)', false),
+    ('To Do (Mapping)', false),
+    ('Products details not found', true)
+ON CONFLICT (ticket_status) DO NOTHING;
+
+
+INSERT INTO etl_metadata (table_name, last_loaded_at)
+VALUES 
+('work_in_progress', '1900-01-01'),
+('work_completed', '1900-01-01'),
+('file_tracket', '1900-01-01');
+
+
+INSERT INTO dim_catalog_associates (associate_name)
+SELECT DISTINCT associate_name
+FROM (
+    -- From work_completed
+    SELECT catalogue_associate AS associate_name FROM work_completed WHERE catalogue_associate IS NOT NULL AND catalogue_associate ~ '[A-Za-z]'
+    UNION
+    SELECT assignee_s FROM work_completed WHERE assignee_s IS NOT NULL AND assignee_s ~ '[A-Za-z]'
+    UNION
+    SELECT assignee_c FROM work_completed WHERE assignee_c IS NOT NULL AND assignee_c ~ '[A-Za-z]'
+    UNION
+    SELECT assignee_u FROM work_completed WHERE assignee_u IS NOT NULL AND assignee_u ~ '[A-Za-z]'
+    UNION
+    SELECT assignee_qc FROM work_completed WHERE assignee_qc IS NOT NULL AND assignee_qc ~ '[A-Za-z]'
+
+    -- From work_in_progress
+    UNION
+    SELECT catalogue_associate FROM work_in_progress WHERE catalogue_associate IS NOT NULL AND catalogue_associate ~ '[A-Za-z]'
+    UNION
+    SELECT assignee_s FROM work_in_progress WHERE assignee_s IS NOT NULL AND assignee_s ~ '[A-Za-z]'
+    UNION
+    SELECT assignee_c FROM work_in_progress WHERE assignee_c IS NOT NULL AND assignee_c ~ '[A-Za-z]'
+    UNION
+    SELECT assignee_u FROM work_in_progress WHERE assignee_u IS NOT NULL AND assignee_u ~ '[A-Za-z]'
+    UNION
+    SELECT assignee_qc FROM work_in_progress WHERE assignee_qc IS NOT NULL AND assignee_qc ~ '[A-Za-z]'
+) AS combined_associates
+ON CONFLICT (associate_name) DO NOTHING;
+
+INSERT INTO dim_clients (client_name)
+SELECT DISTINCT client
+FROM (
+SELECT client FROM work_in_progress
+UNION
+SELECT client FROM work_completed)
+AS combined_clients
+ON CONFLICT (client_name) DO NOTHING;
