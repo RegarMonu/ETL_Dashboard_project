@@ -1,22 +1,20 @@
 import psycopg2
 from datetime import datetime
-from src import db_connection
+from src.utils.db_connection import get_connection
+from src.utils.logger_config import AppLogger
+from src.utils.etl_updater import get_etl_metadata, update_etl_metadata
+
+logger = AppLogger().get_logger()
 
 def run_delta_etl_fact_catalog_activity(source_table):
-    conn = db_connection.get_connection()
+    conn = get_connection()
     try:
         with conn.cursor() as cur:
-            print(f"Fetching last_loaded_at from etl_metadata for {source_table}...")
-            cur.execute(
-                "SELECT last_loaded_at FROM etl_metadata WHERE table_name = %s;",
-                (source_table,)
-            )
-            result = cur.fetchone()
-            if result is None:
-                raise Exception(f"No entry in etl_metadata for '{source_table}'")
-            last_loaded_at = result[0]
+            logger.info(f"Fetching last_loaded_at from etl_metadata for '{source_table}'...")
+            
+            last_loaded_at = get_etl_metadata(cur, source_table=source_table)
 
-            print(f"Running delta insert from {source_table}...")
+            logger.info(f"Running delta insert from {source_table}...")
 
             delta_sql = f"""
                 INSERT INTO fact_catalog_activity (
@@ -134,22 +132,25 @@ def run_delta_etl_fact_catalog_activity(source_table):
             """
 
             cur.execute(delta_sql, (last_loaded_at,) * 4)
-            print(f"{cur.rowcount} rows inserted/updated from {source_table}")
+
+            # cur.execute(f"""
+            #     UPDATE fact_catalog_activity
+            #     SET associate_id = 7
+            #     WHERE associate_id IS NULL;
+            # """)
+
+            
+            logger.info(f"{cur.rowcount} rows inserted/updated from {source_table}")
 
             # Step 3: Update metadata
-            cur.execute("""
-                INSERT INTO etl_metadata (table_name, last_loaded_at)
-                VALUES (%s, CURRENT_TIMESTAMP)
-                ON CONFLICT (table_name)
-                DO UPDATE SET last_loaded_at = EXCLUDED.last_loaded_at;
-            """, (source_table,))
+            update_etl_metadata(cur, source_table=source_table)
 
             conn.commit()
-            print("ETL completed.\n")
+            logger.info(f"Metadata updated for '{source_table}'. ETL completed.\n")
 
     except Exception as e:
         conn.rollback()
-        print(f"ETL failed: {e}")
+        logger.exception(f"ETL failed for '{source_table}': {e}")
     finally:
         conn.close()
 
