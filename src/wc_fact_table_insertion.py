@@ -6,8 +6,7 @@ from src.utils.etl_updater import get_etl_metadata, update_etl_metadata
 
 logger = AppLogger().get_logger()
 
-def run_delta_etl_fact_catalog_activity(source_table):
-    conn = get_connection()
+def run_delta_etl_fact_catalog_activity(conn, source_table):
     try:
         with conn.cursor() as cur:
             logger.info(f"Fetching last_loaded_at from etl_metadata for '{source_table}'...")
@@ -18,7 +17,7 @@ def run_delta_etl_fact_catalog_activity(source_table):
 
             delta_sql = f"""
                 INSERT INTO fact_catalog_activity (
-                    ticket_id, client_id, associate_id, stage_order, stage_status, 
+                    ticket_id, vendor_name, client_id, associate_id, stage_order, stage_status, 
                     ticstatus_id, start_date, closed_date, 
                     no_of_products, no_of_categories, duration_hrs, last_updated_at
                 )
@@ -26,10 +25,11 @@ def run_delta_etl_fact_catalog_activity(source_table):
                     -- Stage S
                     SELECT
                         wc.ticket_id,
+                        wc.vendor_name,
                         c.client_id,
                         ca.associate_id,
                         s.stage_order,
-                        wc.status_s,
+                        INITCAP(wc.status_s),
                         ts.ticket_status_id,
                         wc.start_dt_s,
                         dd.date_id,
@@ -50,10 +50,11 @@ def run_delta_etl_fact_catalog_activity(source_table):
                     -- Stage C
                     SELECT
                         wc.ticket_id,
+                        wc.vendor_name,
                         c.client_id,
                         ca.associate_id,
                         s.stage_order,
-                        wc.status_c,
+                        INITCAP(wc.status_c),
                         ts.ticket_status_id,
                         wc.start_dt_c,
                         dd.date_id,
@@ -74,10 +75,11 @@ def run_delta_etl_fact_catalog_activity(source_table):
                     -- Stage QC
                     SELECT
                         wc.ticket_id,
+                        wc.vendor_name,
                         c.client_id,
                         ca.associate_id,
                         s.stage_order,
-                        wc.status_qc,
+                        INITCAP(wc.status_qc),
                         ts.ticket_status_id,
                         wc.start_dt_qc,
                         dd.date_id,
@@ -98,10 +100,11 @@ def run_delta_etl_fact_catalog_activity(source_table):
                     -- Stage U
                     SELECT
                         wc.ticket_id,
+                        wc.vendor_name,
                         c.client_id,
                         ca.associate_id,
                         s.stage_order,
-                        wc.status_u,
+                        INITCAP(wc.status_u),
                         ts.ticket_status_id,
                         wc.start_dt_u,
                         dd.date_id,
@@ -132,13 +135,6 @@ def run_delta_etl_fact_catalog_activity(source_table):
             """
 
             cur.execute(delta_sql, (last_loaded_at,) * 4)
-
-            # cur.execute(f"""
-            #     UPDATE fact_catalog_activity
-            #     SET associate_id = 7
-            #     WHERE associate_id IS NULL;
-            # """)
-
             
             logger.info(f"{cur.rowcount} rows inserted/updated from {source_table}")
 
@@ -151,9 +147,30 @@ def run_delta_etl_fact_catalog_activity(source_table):
     except Exception as e:
         conn.rollback()
         logger.exception(f"ETL failed for '{source_table}': {e}")
-    finally:
-        conn.close()
+
+def sync_data_with_bucket_data(conn):
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                UPDATE fact_catalog_activity f
+                SET ticstatus_id = 5
+                FROM file_tracker ft
+                WHERE f.vendor_name = ft.filename
+                AND ft.status = 'Success'
+                AND f.ticstatus_id != 5;
+            """)
+        conn.commit()
+        logger.info("Syncing is completed.............")
+    except Exception as e:
+        logger.exception("Error syncing data with bucket data: %s", e)
+
 
 def update_fact_table():
-    for table in ('work_completed', 'work_in_progress'):
-        run_delta_etl_fact_catalog_activity(table)
+    conn = get_connection()
+    try:
+        for table in ('work_completed', 'work_in_progress'):
+            run_delta_etl_fact_catalog_activity(conn, table)
+        logger.info("Trying to Sync Data with Bucket Data")
+        # sync_data_with_bucket_data(conn)
+    finally:
+        conn.close()

@@ -35,9 +35,14 @@ def main():
         client_associate_id_update.update_client_associate_data()
         logger.info("Client-associate mapping updated")
 
-        logger.info("Step 6: Updating WC fact table")
+        logger.info("Step 6: Updating fact table")
         wc_fact_table_insertion.update_fact_table()
-        logger.info("WC fact table update complete")
+        logger.info("fact table update complete")
+
+        logger.info("Step 7: Refreshing Matrialized View")
+        # materialized_view_refresh()
+        logger.info("Refreshed Matrialized View")
+
 
     except Exception as e:
         logger.exception("Pipeline execution failed due to an unexpected error")

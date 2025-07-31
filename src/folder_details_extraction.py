@@ -60,6 +60,10 @@ def extract_delta_xlsx_metadata():
     try:
         with conn.cursor() as cur:
             last_loaded_at = get_etl_metadata(cur, source_table='file_tracker')
+
+            if last_loaded_at:
+                last_loaded_at = last_loaded_at.replace(tzinfo=timezone.utc)
+                
             logger.info(f"Last loaded timestamp: {last_loaded_at}")
 
         blobs = bucket.list_blobs(prefix=PREFIX)

@@ -146,12 +146,14 @@ CREATE TABLE IF NOT EXISTS work_in_progress
     insert_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-
+-- Reset sequence to start from 1 (or max id + 1)
+ALTER SEQUENCE dim_ticket_status_ticket_status_id_seq RESTART WITH 1;
 
 CREATE TABLE IF NOT EXISTS dim_catalog_associates (
     associate_id SERIAL PRIMARY KEY,
     associate_name TEXT UNIQUE
 );
+
 
 CREATE TABLE IF NOT EXISTS dim_teams (
     team_id SERIAL PRIMARY KEY,
@@ -164,9 +166,9 @@ CREATE TABLE IF NOT EXISTS dim_clients (
     client_name TEXT UNIQUE
 );
 
-
 CREATE TABLE IF NOT EXISTS dim_stages (
-    stage TEXT PRIMARY KEY,       -- e.g. 'S', 'C', 'QC', 'U'
+    stage TEXT PRIMARY KEY, -- e.g. 'S', 'C', 'QC', 'U'
+	stage_name TEXT,
     stage_order INT UNIQUE,
     stage_color TEXT
 );
@@ -203,14 +205,16 @@ CREATE TABLE IF NOT EXISTS etl_metadata (
     last_loaded_at TIMESTAMP NOT NULL
 );
 
+select * from fact_catalog_activity;
+
 -- fact_catalog_activity
 CREATE TABLE IF NOT EXISTS fact_catalog_activity (
     fact_id SERIAL PRIMARY KEY,
     ticket_id TEXT NOT NULL,
+	vendor_name Text, 
     client_id INT,
     associate_id INT,
     stage_order INT,
-    stage_status TEXT,
     ticstatus_id INT,
     start_date DATE,
     closed_date DATE,
@@ -231,12 +235,12 @@ CREATE TABLE IF NOT EXISTS fact_catalog_activity (
 
 --------------------------Filling All Tables---------------------------------
 
-INSERT INTO dim_stages (stage, stage_order, stage_color)
+INSERT INTO dim_stages (stage, stage_name, stage_order, stage_color)
 VALUES 
-    ('S', 1, 'green'),
-    ('C', 2, 'black'),
-    ('QC', 3, 'blue'),
-    ('U', 4, 'purple')
+    ('S', 'Scrapped',1, 'green'),
+    ('C', 'Cleaned',2, 'black'),
+    ('QC', 'Quality-Check', 3, 'blue'),
+    ('U', 'Upload', 4, 'purple')
 ON CONFLICT (stage_order) DO NOTHING;
 
 
@@ -253,7 +257,6 @@ SELECT
 FROM generate_series('2022-05-01'::date, '2030-12-31'::date, interval '1 day') AS d
 ON CONFLICT (date_id) DO NOTHING;
 
-
 INSERT INTO dim_ticket_status (ticket_status, is_final)
 VALUES 
     ('In-progress', false),
@@ -268,47 +271,69 @@ VALUES
     ('Products details not found', true)
 ON CONFLICT (ticket_status) DO NOTHING;
 
-
 INSERT INTO etl_metadata (table_name, last_loaded_at)
 VALUES 
 ('work_in_progress', '1900-01-01'),
 ('work_completed', '1900-01-01'),
-('file_tracket', '1900-01-01');
+('file_tracker', '1900-01-01');
 
 
-INSERT INTO dim_catalog_associates (associate_name)
-SELECT DISTINCT associate_name
-FROM (
-    -- From work_completed
-    SELECT catalogue_associate AS associate_name FROM work_completed WHERE catalogue_associate IS NOT NULL AND catalogue_associate ~ '[A-Za-z]'
-    UNION
-    SELECT assignee_s FROM work_completed WHERE assignee_s IS NOT NULL AND assignee_s ~ '[A-Za-z]'
-    UNION
-    SELECT assignee_c FROM work_completed WHERE assignee_c IS NOT NULL AND assignee_c ~ '[A-Za-z]'
-    UNION
-    SELECT assignee_u FROM work_completed WHERE assignee_u IS NOT NULL AND assignee_u ~ '[A-Za-z]'
-    UNION
-    SELECT assignee_qc FROM work_completed WHERE assignee_qc IS NOT NULL AND assignee_qc ~ '[A-Za-z]'
+---postgres+psycopg2://vipani_user:vipani321@34.59.125.155:5432/analytics_db
 
-    -- From work_in_progress
-    UNION
-    SELECT catalogue_associate FROM work_in_progress WHERE catalogue_associate IS NOT NULL AND catalogue_associate ~ '[A-Za-z]'
-    UNION
-    SELECT assignee_s FROM work_in_progress WHERE assignee_s IS NOT NULL AND assignee_s ~ '[A-Za-z]'
-    UNION
-    SELECT assignee_c FROM work_in_progress WHERE assignee_c IS NOT NULL AND assignee_c ~ '[A-Za-z]'
-    UNION
-    SELECT assignee_u FROM work_in_progress WHERE assignee_u IS NOT NULL AND assignee_u ~ '[A-Za-z]'
-    UNION
-    SELECT assignee_qc FROM work_in_progress WHERE assignee_qc IS NOT NULL AND assignee_qc ~ '[A-Za-z]'
-) AS combined_associates
-ON CONFLICT (associate_name) DO NOTHING;
+CREATE MATERIALIZED VIEW kpi_table AS
+SELECT
+    f.fact_id,
+    f.ticket_id,
+	
+    -- Client
+    dc.client_id,
+    dc.client_name,
 
-INSERT INTO dim_clients (client_name)
-SELECT DISTINCT client
-FROM (
-SELECT client FROM work_in_progress
-UNION
-SELECT client FROM work_completed)
-AS combined_clients
-ON CONFLICT (client_name) DO NOTHING;
+    -- Associate
+    da.associate_id,
+    da.associate_name,
+
+    -- Team
+    dt.team_id,
+    dt.team_name,
+    dt.team_lead,
+
+    -- Stage
+    ds.stage,
+	ds.stage_name,
+    ds.stage_order,
+	f.stage_status,
+
+    -- Ticket Status
+    ts.ticket_status_id,
+    ts.ticket_status,
+    ts.is_final,
+
+    -- Date Info
+    d.date_id AS closed_date_id,
+    d.day,
+    d.month,
+    d.year,
+    d.month_year,
+    d.quarter,
+    d.week,
+    d.day_of_week,
+
+    -- Measures
+    f.no_of_products,
+    f.no_of_categories,
+    f.duration_hrs,
+    f.start_date,
+    f.closed_date AS closed_date_actual,
+    f.last_updated_at
+
+FROM fact_catalog_activity f
+LEFT JOIN dim_clients dc ON f.client_id = dc.client_id
+LEFT JOIN dim_catalog_associates da ON f.associate_id = da.associate_id
+LEFT JOIN associate_team_map atm ON da.associate_name = atm.associate_name
+LEFT JOIN dim_teams dt ON atm.team_name = dt.team_name
+LEFT JOIN dim_stages ds ON f.stage_order = ds.stage_order
+LEFT JOIN dim_ticket_status ts ON f.ticstatus_id = ts.ticket_status_id
+LEFT JOIN dim_dates d ON f.closed_date = d.date_id;
+
+select count(DISTINCT ticket_id) from fact_catalog_activity where ticstatus_id=5;
