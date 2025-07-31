@@ -39,7 +39,8 @@ def run_delta_etl_fact_catalog_activity(conn, source_table):
                         NOW()
                     FROM {source_table} wc
                     LEFT JOIN dim_clients c ON wc.client = c.client_name
-                    LEFT JOIN dim_catalog_associates ca ON wc.catalogue_associate = ca.associate_name
+                    LEFT JOIN dim_catalog_associates ca 
+                        ON COALESCE(NULLIF(TRIM(wc.catalogue_associate), ''), 'Unassigned') = ca.associate_name
                     LEFT JOIN dim_stages s ON s.stage = 'S'
                     LEFT JOIN dim_ticket_status ts ON ts.ticket_status = wc.ticket_status
                     LEFT JOIN dim_dates dd ON dd.date_id = wc.closed_dt_s
@@ -64,7 +65,8 @@ def run_delta_etl_fact_catalog_activity(conn, source_table):
                         NOW()
                     FROM {source_table} wc
                     LEFT JOIN dim_clients c ON wc.client = c.client_name
-                    LEFT JOIN dim_catalog_associates ca ON wc.assignee_c = ca.associate_name
+                    LEFT JOIN dim_catalog_associates ca 
+                        ON COALESCE(NULLIF(TRIM(wc.assignee_c), ''), 'Unassigned') = ca.associate_name
                     LEFT JOIN dim_stages s ON s.stage = 'C'
                     LEFT JOIN dim_ticket_status ts ON ts.ticket_status = wc.ticket_status
                     LEFT JOIN dim_dates dd ON dd.date_id = wc.closed_dt_c
@@ -89,7 +91,8 @@ def run_delta_etl_fact_catalog_activity(conn, source_table):
                         NOW()
                     FROM {source_table} wc
                     LEFT JOIN dim_clients c ON wc.client = c.client_name
-                    LEFT JOIN dim_catalog_associates ca ON wc.assignee_qc = ca.associate_name
+                    LEFT JOIN dim_catalog_associates ca 
+                        ON COALESCE(NULLIF(TRIM(wc.assignee_qc), ''), 'Unassigned') = ca.associate_name
                     LEFT JOIN dim_stages s ON s.stage = 'QC'
                     LEFT JOIN dim_ticket_status ts ON ts.ticket_status = wc.ticket_status
                     LEFT JOIN dim_dates dd ON dd.date_id = wc.closed_date_qc
@@ -114,7 +117,8 @@ def run_delta_etl_fact_catalog_activity(conn, source_table):
                         NOW()
                     FROM {source_table} wc
                     LEFT JOIN dim_clients c ON wc.client = c.client_name
-                    LEFT JOIN dim_catalog_associates ca ON wc.assignee_u = ca.associate_name
+                    LEFT JOIN dim_catalog_associates ca 
+                        ON COALESCE(NULLIF(TRIM(wc.assignee_u), ''), 'Unassigned') = ca.associate_name
                     LEFT JOIN dim_stages s ON s.stage = 'U'
                     LEFT JOIN dim_ticket_status ts ON ts.ticket_status = wc.ticket_status
                     LEFT JOIN dim_dates dd ON dd.date_id = wc.uploaded_date_u
@@ -171,6 +175,6 @@ def update_fact_table():
         for table in ('work_completed', 'work_in_progress'):
             run_delta_etl_fact_catalog_activity(conn, table)
         logger.info("Trying to Sync Data with Bucket Data")
-        # sync_data_with_bucket_data(conn)
+        sync_data_with_bucket_data(conn)
     finally:
         conn.close()

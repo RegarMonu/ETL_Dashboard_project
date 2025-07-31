@@ -40,7 +40,7 @@ def main():
         logger.info("fact table update complete")
 
         logger.info("Step 7: Refreshing Matrialized View")
-        # materialized_view_refresh()
+        materialized_view_refresh()
         logger.info("Refreshed Matrialized View")
 
 
