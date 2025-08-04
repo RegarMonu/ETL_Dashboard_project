@@ -22,6 +22,7 @@ def clean_column_name(col):
 
 
 def download_and_extract(file_id, service):
+    """Downloads a file from Google Drive and extracts the second sheet into a DataFrame."""
     try:
         logger.info(f"Downloading file with ID: {file_id}")
         request = service.files().get_media(fileId=file_id)
@@ -47,6 +48,7 @@ def download_and_extract(file_id, service):
 
 
 def get_sheet_data_from_drive():
+    """Main function to get data from Google Drive and process it into a DataFrame."""
     try:
         logger.info("Starting Google Drive data import")
 

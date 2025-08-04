@@ -5,6 +5,7 @@ from src.utils.logger_config import AppLogger  # Adjust path as per your project
 logger = AppLogger().get_logger()
 
 def update_client_associate_data():
+    """Update client and associate data in the database."""
     conn = get_connection()
 
     sql_queries = [

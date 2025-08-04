@@ -4,6 +4,7 @@ import os
 from datetime import datetime
 
 class AppLogger:
+    '''Singleton logger configuration class for the application.'''
     def __init__(self, logger_name="app_logger"):
         self.logger = logging.getLogger(logger_name)
         self.logger.setLevel(logging.DEBUG)

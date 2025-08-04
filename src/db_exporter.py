@@ -10,11 +10,13 @@ logger = AppLogger().get_logger()
 
 load_dotenv()
 def chunked(iterable, size):
+    """Yield successive n-sized chunks from iterable."""
     for i in range(0, len(iterable), size):
         yield iterable[i:i + size]
 
 
 def upsert_with_filter(conn, df, table_name, conflict_key='ticket_id', batch_size=1500):
+    """UPSERTs data into the specified table with conflict resolution."""
     if df.empty:
         logger.info(f"No rows to UPSERT into '{table_name}'")
         return 0
@@ -51,6 +53,7 @@ def upsert_with_filter(conn, df, table_name, conflict_key='ticket_id', batch_siz
 
 
 def uploader(df: pd.DataFrame):
+    """Processes the DataFrame and uploads it to the database."""
     if df.empty:
         logger.warning("DataFrame is empty. No rows to process.")
         return

@@ -146,8 +146,6 @@ CREATE TABLE IF NOT EXISTS work_in_progress
     insert_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Reset sequence to start from 1 (or max id + 1)
-ALTER SEQUENCE dim_ticket_status_ticket_status_id_seq RESTART WITH 1;
 
 CREATE TABLE IF NOT EXISTS dim_catalog_associates (
     associate_id SERIAL PRIMARY KEY,
@@ -277,9 +275,6 @@ VALUES
 ('work_completed', '1900-01-01'),
 ('file_tracker', '1900-01-01');
 
-
----postgres+psycopg2://vipani_user:vipani321@34.59.125.155:5432/analytics_db
-
 CREATE MATERIALIZED VIEW kpi_table AS
 SELECT
     f.fact_id,
@@ -336,4 +331,3 @@ LEFT JOIN dim_stages ds ON f.stage_order = ds.stage_order
 LEFT JOIN dim_ticket_status ts ON f.ticstatus_id = ts.ticket_status_id
 LEFT JOIN dim_dates d ON f.closed_date = d.date_id;
 
-select count(DISTINCT ticket_id) from fact_catalog_activity where ticstatus_id=5;

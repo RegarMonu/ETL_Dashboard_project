@@ -7,6 +7,7 @@ from src.utils.etl_updater import get_etl_metadata, update_etl_metadata
 logger = AppLogger().get_logger()
 
 def run_delta_etl_fact_catalog_activity(conn, source_table):
+    """Runs the delta ETL process for the fact_catalog_activity table."""
     try:
         with conn.cursor() as cur:
             logger.info(f"Fetching last_loaded_at from etl_metadata for '{source_table}'...")
@@ -153,6 +154,7 @@ def run_delta_etl_fact_catalog_activity(conn, source_table):
         logger.exception(f"ETL failed for '{source_table}': {e}")
 
 def sync_data_with_bucket_data(conn):
+    """Syncs the fact_catalog_activity table with the file_tracker data."""
     try:
         with conn.cursor() as cur:
             cur.execute("""
@@ -170,6 +172,7 @@ def sync_data_with_bucket_data(conn):
 
 
 def update_fact_table():
+    """Updates the fact_catalog_activity table with new data."""
     conn = get_connection()
     try:
         for table in ('work_completed', 'work_in_progress'):

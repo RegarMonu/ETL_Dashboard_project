@@ -30,10 +30,12 @@ except Exception as e:
 
 # === Filename Parser ===
 def normalize_name(name):
+    """Normalize names by removing special characters and trimming whitespace."""
     return re.sub(r'\s*\(.*?\)', '', name).strip()
 
 
 def extract_info_from_filename(filename):
+    """Extracts file name, person1, and person2 from the filename."""
     try:
         name_without_ext = filename.split('/')[-1].replace('.xlsx', '')
         parts = name_without_ext.split('$#$')
@@ -56,6 +58,7 @@ def extract_info_from_filename(filename):
 
 # === Main Extraction Function ===
 def extract_delta_xlsx_metadata():
+    """Extracts metadata from XLSX files in GCS bucket."""
     conn = get_connection()
     try:
         with conn.cursor() as cur:

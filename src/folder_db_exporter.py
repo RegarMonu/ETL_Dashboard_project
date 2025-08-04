@@ -7,6 +7,9 @@ from src.utils.logger_config import AppLogger  # adjust if path differs
 logger = AppLogger().get_logger()
 
 def upload(df: pd.DataFrame):
+    """
+    Uploads a DataFrame to the file_tracker table in the database.
+    """
     if df.empty:
         logger.warning("Provided DataFrame is empty. No records to UPSERT.")
         return

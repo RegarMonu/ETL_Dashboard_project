@@ -12,6 +12,7 @@ from src.refresh_materialized_view import materialized_view_refresh
 logger = AppLogger().get_logger()
 
 def main():
+    """Main function to execute the data pipeline steps."""
     logger.info("Pipeline execution started")
 
     try:
